@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using RedditTopPostsAndUsers.Repositories;
 
 namespace RedditTopPostsAndUsers.Controllers
 {

@@ -1,4 +1,4 @@
-namespace RedditTopPostsAndUsers
+namespace RedditTopPostsAndUsers.Models
 {
     public class RedditApiResponseListingModel<T>
     {

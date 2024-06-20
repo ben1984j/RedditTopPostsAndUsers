@@ -1,6 +1,6 @@
 using Newtonsoft.Json;
 
-namespace RedditTopPostsAndUsers
+namespace RedditTopPostsAndUsers.Models
 {
     public class RedditApiResponseLinkModel
     {

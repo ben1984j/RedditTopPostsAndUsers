@@ -3,7 +3,7 @@ using RestSharp;
 using RestSharp.Authenticators;
 using RestSharp.Authenticators.OAuth2;
 
-namespace RedditTopPostsAndUsers
+namespace RedditTopPostsAndUsers.ExternalApis
 {
     public class RedditApi : IRedditApi
     {

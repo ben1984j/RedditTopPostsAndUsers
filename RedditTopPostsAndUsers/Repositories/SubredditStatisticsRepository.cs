@@ -1,7 +1,8 @@
 ﻿using Newtonsoft.Json;
+using RedditTopPostsAndUsers.Models;
 using System.Collections.Concurrent;
 
-namespace RedditTopPostsAndUsers
+namespace RedditTopPostsAndUsers.Repositories
 {
     public class SubredditStatisticsRepository : ISubredditStatisticsRepository
     {

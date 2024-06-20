@@ -1,6 +1,6 @@
 ﻿using RestSharp;
 
-namespace RedditTopPostsAndUsers
+namespace RedditTopPostsAndUsers.ExternalApis
 {
     public interface IRedditApi
     {

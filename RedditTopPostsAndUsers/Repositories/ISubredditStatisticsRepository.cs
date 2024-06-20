@@ -1,4 +1,6 @@
-﻿namespace RedditTopPostsAndUsers
+﻿using RedditTopPostsAndUsers.Models;
+
+namespace RedditTopPostsAndUsers.Repositories
 {
     public interface ISubredditStatisticsRepository
     {
