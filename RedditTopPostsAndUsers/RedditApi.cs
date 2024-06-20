@@ -21,9 +21,11 @@ namespace RedditTopPostsAndUsers
         private decimal _rateLimitRemainingRequests = 0;
         private decimal _rateLimitRemainingSecondsUntilReset = 0;
 
-        private readonly Dictionary<string, int> _posts = new Dictionary<string, int>();
+        //private readonly Dictionary<string, int> _posts = new Dictionary<string, int>();
+        //private readonly Dictionary<string, int> _users = new Dictionary<string, int>();
 
-        private readonly Dictionary<string, int> _users = new Dictionary<string, int>();
+        private readonly IList<SubredditStatisticsPostModel> _posts = new List<SubredditStatisticsPostModel>();
+        private readonly IList<SubredditStatisticsUserModel> _users = new List<SubredditStatisticsUserModel>();
 
         private readonly Semaphore _apiRequestLock = new Semaphore(1, 1);
 
@@ -178,7 +180,7 @@ namespace RedditTopPostsAndUsers
 
 
 
-                request.AddQueryParameter("limit", "5"); // TODO: TEST
+                request.AddQueryParameter("limit", "100"); // TODO: TEST
 
                 request.AddHeader("User-Agent", "TopPostsAndUsers v1.0 by u/ben1984j"); // TODO: private var.
 
@@ -187,10 +189,16 @@ namespace RedditTopPostsAndUsers
                     var response = await restClient.ExecuteAsync(request);
 
 
-                    if (response.StatusCode == HttpStatusCode.TooManyRequests)
+                if (response.StatusCode != HttpStatusCode.OK)
                 {
-                    var a = 2;
+                    return;
+                    // TODO: log
                 }
+
+                //    if (response.StatusCode == HttpStatusCode.TooManyRequests)
+                //{
+                //    var a = 2;
+                //}
 
                     //TODO: if non success, just ignore.
 
@@ -216,19 +224,40 @@ namespace RedditTopPostsAndUsers
                         var title = result?.Data?.Title ?? string.Empty;
                         var author = result?.Data?.Author ?? string.Empty;
 
-                        // Console.WriteLine(title);
+                    // Console.WriteLine(title);
 
-                        _posts[title] = result?.Data?.Ups ?? 0; // TODO: actually should be upvotes
+                    _posts.Add(new SubredditStatisticsPostModel()
+                    {
+                        Title = title,
+                        Url = result?.Data?.Permalink,
+                        Upvotes = result?.Data?.Ups ?? 0
+                    });
+
+                    var user = _users.FirstOrDefault(x => x.Username == author);
+
+                    if (user == null)
+                    {
+                        user = new SubredditStatisticsUserModel()
+                        {
+                            Username = author,
+                            PostCount = 0
+                        };
+                        _users.Add(user);
+                    }
+
+                    user.PostCount++;
+
+                        //_posts[title] = result?.Data?.Ups ?? 0; // TODO: actually should be upvotes
 
                         // _topUsers[author] = result?.Data?.Score ?? 0;
 
                         // TODO: can't keep adding to top users...need to reset.
 
-                        if (!_users.ContainsKey(author))
-                        {
-                            _users[author] = 0;
-                        }
-                        _users[author]++;
+                        //if (!_users.ContainsKey(author))
+                        //{
+                        //    _users[author] = 0;
+                        //}
+                        //_users[author]++;
                     }
 
                 decimal rateLimitRemainingRequests;
@@ -250,7 +279,7 @@ namespace RedditTopPostsAndUsers
                 else
                 {
                     var avgAllowableIntervalBetweenRequests = rateLimitRemainingSecondsUntilReset / rateLimitRemainingRequests;
-                    Console.WriteLine($"Waiting for {avgAllowableIntervalBetweenRequests} seconds to stay within request limit");
+                    // Console.WriteLine($"Waiting for {avgAllowableIntervalBetweenRequests} seconds to stay within request limit");
 
                     await Task.Delay((int)(avgAllowableIntervalBetweenRequests * 1000));
 
@@ -269,7 +298,10 @@ namespace RedditTopPostsAndUsers
 
                 Console.WriteLine($"Retrieved {count} posts");
 
-                _apiRequestLock.Release();
+            Console.WriteLine(JsonConvert.SerializeObject(_posts.OrderByDescending(x => x.Upvotes).Take(2), Formatting.Indented));
+            Console.WriteLine(JsonConvert.SerializeObject(_users.OrderByDescending(x => x.PostCount).Take(2), Formatting.Indented));
+
+            _apiRequestLock.Release();
             //}
         }
     }
