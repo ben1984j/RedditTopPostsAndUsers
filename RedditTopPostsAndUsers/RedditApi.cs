@@ -92,6 +92,13 @@ namespace RedditTopPostsAndUsers
 
                 Console.WriteLine(response.Content);
 
+                var responseObj = JsonConvert.DeserializeObject<RedditApiResponseModel<RedditApiResponseListingModel<RedditApiResponseModel<RedditApiResponseLinkModel>>>>(response?.Content ?? "{}");
+
+                foreach (var result in responseObj?.Data?.Children ?? Enumerable.Empty<RedditApiResponseModel<RedditApiResponseLinkModel>>())
+                {
+                    Console.WriteLine(result?.Data?.Title);
+                }
+
                 // var content = JsonConvert.DeserializeObject<dynamic>(response?.Content ?? "{}");
             }
         }
