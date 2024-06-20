@@ -19,6 +19,8 @@ namespace RedditTopPostsAndUsers
 
         private readonly Dictionary<string, int> _topPosts = new Dictionary<string, int>();
 
+        private readonly Dictionary<string, int> _topUsers = new Dictionary<string, int>();
+
         private readonly Semaphore _apiRequestLock = new Semaphore(1, 1);
 
         public RedditApi(string clientId, string clientSecret)
@@ -90,14 +92,32 @@ namespace RedditTopPostsAndUsers
 
                 var response = await restClient.ExecuteAsync(request);
 
-                Console.WriteLine(response.Content);
+                // Console.WriteLine(response.Content);
 
                 var responseObj = JsonConvert.DeserializeObject<RedditApiResponseModel<RedditApiResponseListingModel<RedditApiResponseModel<RedditApiResponseLinkModel>>>>(response?.Content ?? "{}");
 
                 foreach (var result in responseObj?.Data?.Children ?? Enumerable.Empty<RedditApiResponseModel<RedditApiResponseLinkModel>>())
                 {
-                    Console.WriteLine(result?.Data?.Title);
+                    var title = result?.Data?.Title ?? string.Empty;
+                    var author = result?.Data?.Author ?? string.Empty;
+
+                    Console.WriteLine(title);
+
+                    _topPosts[title] = result?.Data?.Score ?? 0; // TODO: actually should be upvotes
+
+                    // _topUsers[author] = result?.Data?.Score ?? 0;
+
+                    if (!_topUsers.ContainsKey(author))
+                    {
+                        _topUsers[author] = 0;
+                    }
+
+                    _topUsers[author]++;
                 }
+
+                Console.WriteLine(JsonConvert.SerializeObject(_topPosts, Formatting.Indented));
+
+                Console.WriteLine(JsonConvert.SerializeObject(_topUsers, Formatting.Indented));
 
                 // var content = JsonConvert.DeserializeObject<dynamic>(response?.Content ?? "{}");
             }
