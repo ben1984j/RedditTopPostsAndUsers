@@ -31,12 +31,16 @@ app.MapControllers();
 
 var redditApi = new RedditApi(
     app.Configuration["RedditApiClientId"],
-    app.Configuration["RedditApiClientSecret"],
-    new SubredditStatisticsRepository()
+    app.Configuration["RedditApiClientSecret"]
 );
 
 await redditApi.SetAccessToken();
 
-redditApi.MonitorSubreddit("music");
+var subredditStatisticsService = new SubredditStatisticsService(
+    redditApi,
+    new SubredditStatisticsRepository()
+);
+
+subredditStatisticsService.MonitorSubreddit("music");
 
 app.Run();
