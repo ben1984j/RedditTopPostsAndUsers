@@ -32,6 +32,10 @@ app.UseAuthorization();
 app.MapControllers();
 
 var subredditStatisticsService = app.Services.GetService<ISubredditStatisticsService>();
-subredditStatisticsService.MonitorSubreddit("music");
+foreach (var subreddit in app.Configuration["SubredditsToMonitor"]?.Split(',') ?? new string[0])
+{
+    subredditStatisticsService.MonitorSubreddit(subreddit);
+}
+
 
 app.Run();
