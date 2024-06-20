@@ -16,6 +16,9 @@ namespace RedditTopPostsAndUsers
         // private const string _subreddit = "music";
 
         private string? _accessToken = null;
+        private string? _firstPostId = null;
+        private decimal _rateLimitRemainingRequests = 0;
+        private decimal _rateLimitRemainingSecondsUntilReset = 0;
 
         private readonly Dictionary<string, int> _topPosts = new Dictionary<string, int>();
 
@@ -38,6 +41,8 @@ namespace RedditTopPostsAndUsers
 
         public async Task SetAccessToken()
         {
+            // tODO: lock.
+
             var restClient = new RestClient(
                 new RestClientOptions(_baseUrl)
                 {
@@ -64,14 +69,16 @@ namespace RedditTopPostsAndUsers
             Console.WriteLine(_accessToken);
         }
 
-        public async Task MonitorSubreddit(string subreddit)
+        public async Task SetFirstPostId(string subreddit)
         {
             // tODO: keep dicts of subreddits?  should i even implement it this way?
             // need a diff. class per subreddit, but keep api shared.
             // need a timer to determine when to refresh token too.  but for now, it's static.
 
-            using (_apiRequestLock)
-            {
+            // there will always be at least 1 recent post, so use that as reference point.
+
+            //using (_apiRequestLock)
+            //{
                 _apiRequestLock.WaitOne();
 
                 var restClient = new RestClient(
@@ -82,7 +89,7 @@ namespace RedditTopPostsAndUsers
                 );
 
                 var request = new RestRequest(
-                    $"/r/{subreddit}/new",
+                    $"/r/{subreddit}/new?limit=1",
                     Method.Get
                 );
 
@@ -96,31 +103,124 @@ namespace RedditTopPostsAndUsers
 
                 var responseObj = JsonConvert.DeserializeObject<RedditApiResponseModel<RedditApiResponseListingModel<RedditApiResponseModel<RedditApiResponseLinkModel>>>>(response?.Content ?? "{}");
 
-                foreach (var result in responseObj?.Data?.Children ?? Enumerable.Empty<RedditApiResponseModel<RedditApiResponseLinkModel>>())
+
+                _firstPostId = responseObj?.Data?.Children?.FirstOrDefault()?.Data?.Name;
+            _firstPostId = "t3_1dk1lq3"; // test
+
+                Console.WriteLine(_firstPostId);
+
+                _apiRequestLock.Release();
+            //}
+        }
+
+        public async Task MonitorSubreddit(string subreddit)
+        {
+            // tODO: keep dicts of subreddits?  should i even implement it this way?
+            // need a diff. class per subreddit, but keep api shared.
+            // need a timer to determine when to refresh token too.  but for now, it's static.
+
+            while (_firstPostId == null) // tODO: OR IF.
+            {
+                await SetFirstPostId(subreddit);
+            }
+
+            while (true)
+            {
+                await GetSubredditStatistics(subreddit);
+
+                await Task.Delay(5000); // tODO...reasonable refresh interval.
+            }
+        }
+
+        public async Task GetSubredditStatistics(string subreddit)
+        {
+            // tODO: keep dicts of subreddits?  should i even implement it this way?
+            // need a diff. class per subreddit, but keep api shared.
+            // need a timer to determine when to refresh token too.  but for now, it's static.
+
+            var count = 0;
+
+            // also use this when returning values to controller.
+
+            //using (_apiRequestLock) // tODO: try/finally...this isn't releasing.
+            //{
+                _apiRequestLock.WaitOne();
+
+                _topPosts.Clear();
+                _topUsers.Clear();
+
+                string? before = _firstPostId;
+
+                do
                 {
-                    var title = result?.Data?.Title ?? string.Empty;
-                    var author = result?.Data?.Author ?? string.Empty;
+                    var restClient = new RestClient(
+                        new RestClientOptions(_oauthUrl)
+                        {
+                            Authenticator = new OAuth2AuthorizationRequestHeaderAuthenticator(_accessToken, "Bearer")
+                        }
+                    );
 
-                    Console.WriteLine(title);
+                    var request = new RestRequest(
+                        $"/r/{subreddit}/new",
+                        Method.Get
+                    );
 
-                    _topPosts[title] = result?.Data?.Score ?? 0; // TODO: actually should be upvotes
+                    request.AddQueryParameter("before", before);
 
-                    // _topUsers[author] = result?.Data?.Score ?? 0;
+                request.AddQueryParameter("limit", "1"); // TODO: TEST
 
-                    if (!_topUsers.ContainsKey(author))
+                request.AddHeader("User-Agent", "TopPostsAndUsers v1.0 by u/ben1984j");
+
+                    // request.AddBody("grant_type=client_credentials", ContentType.FormUrlEncoded);
+
+                    var response = await restClient.ExecuteAsync(request);
+
+                    // Console.WriteLine(response.Content);
+
+                    var responseObj = JsonConvert.DeserializeObject<RedditApiResponseModel<RedditApiResponseListingModel<RedditApiResponseModel<RedditApiResponseLinkModel>>>>(response?.Content ?? "{}");
+
+                    // before = responseObj?.Data?.Before;
+
+
+
+
+                    before = responseObj?.Data?.Children?.FirstOrDefault()?.Data?.Name;
+
+                    foreach (var result in responseObj?.Data?.Children ?? Enumerable.Empty<RedditApiResponseModel<RedditApiResponseLinkModel>>())
                     {
-                        _topUsers[author] = 0;
+                        count++;
+
+                        var title = result?.Data?.Title ?? string.Empty;
+                        var author = result?.Data?.Author ?? string.Empty;
+
+                        Console.WriteLine(title);
+
+                        _topPosts[title] = result?.Data?.Score ?? 0; // TODO: actually should be upvotes
+
+                        // _topUsers[author] = result?.Data?.Score ?? 0;
+
+                        // TODO: can't keep adding to top users...need to reset.
+
+                        if (!_topUsers.ContainsKey(author))
+                        {
+                            _topUsers[author] = 0;
+                        }
+
+                        _topUsers[author]++;
                     }
 
-                    _topUsers[author]++;
-                }
+                    // Console.WriteLine(JsonConvert.SerializeObject(_topPosts, Formatting.Indented));
 
-                Console.WriteLine(JsonConvert.SerializeObject(_topPosts, Formatting.Indented));
+                    // Console.WriteLine(JsonConvert.SerializeObject(_topUsers, Formatting.Indented));
 
-                Console.WriteLine(JsonConvert.SerializeObject(_topUsers, Formatting.Indented));
+                    // var content = JsonConvert.DeserializeObject<dynamic>(response?.Content ?? "{}");
 
-                // var content = JsonConvert.DeserializeObject<dynamic>(response?.Content ?? "{}");
-            }
+                } while (before != null);
+
+                Console.WriteLine(count);
+
+                _apiRequestLock.Release();
+            //}
         }
     }
 }
