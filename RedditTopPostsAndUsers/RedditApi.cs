@@ -119,16 +119,16 @@ namespace RedditTopPostsAndUsers
             // need a diff. class per subreddit, but keep api shared.
             // need a timer to determine when to refresh token too.  but for now, it's static.
 
-            while (_firstPostId == null) // tODO: OR IF.
-            {
+            //while (_firstPostId == null) // tODO: OR IF.
+            //{
                 await SetFirstPostId(subreddit);
-            }
+            //}
 
             while (true)
             {
                 await GetSubredditStatistics(subreddit);
 
-                await Task.Delay(5000); // tODO...reasonable refresh interval.
+                await Task.Delay(5000); // tODO...reasonable refresh interval.  OR just let built in delay do its thing.
             }
         }
 
@@ -146,8 +146,8 @@ namespace RedditTopPostsAndUsers
             //{
                 _apiRequestLock.WaitOne();
 
-                _topPosts.Clear();
-                _topUsers.Clear();
+                _topPosts.Clear(); // yes, b/c we're marching through the whole thing again.
+                _topUsers.Clear(); // for this one we don't need historical data but may as well update since we're already marching through.
 
                 string? before = _firstPostId;
 
@@ -209,13 +209,40 @@ namespace RedditTopPostsAndUsers
                         _topUsers[author]++;
                     }
 
-                    // Console.WriteLine(JsonConvert.SerializeObject(_topPosts, Formatting.Indented));
+                decimal rateLimitRemainingRequests;
+                decimal rateLimitRemainingSecondsUntilReset;
 
-                    // Console.WriteLine(JsonConvert.SerializeObject(_topUsers, Formatting.Indented));
+                
+                decimal.TryParse(response?.GetHeaderValue("x-ratelimit-remaining"), out rateLimitRemainingRequests);
+                decimal.TryParse(response?.GetHeaderValue("x-ratelimit-reset"), out rateLimitRemainingSecondsUntilReset);
 
-                    // var content = JsonConvert.DeserializeObject<dynamic>(response?.Content ?? "{}");
+                Console.WriteLine(response?.GetHeaderValue("x-ratelimit-remaining"));
+                Console.WriteLine(response?.GetHeaderValue("x-ratelimit-reset"));
 
-                } while (before != null);
+                if (rateLimitRemainingRequests == 0)
+                {
+                    await Task.Delay((int)(rateLimitRemainingSecondsUntilReset * 1000));
+                    Console.WriteLine($"Hit request limit; waiting for {rateLimitRemainingSecondsUntilReset} seconds");
+                }
+                else
+                {
+                    var avgAllowableIntervalBetweenRequests = rateLimitRemainingSecondsUntilReset / rateLimitRemainingRequests;
+                    Console.WriteLine($"Waiting for {avgAllowableIntervalBetweenRequests} seconds to avoid hitting request limit");
+
+                    await Task.Delay((int)(avgAllowableIntervalBetweenRequests * 1000));
+
+                    // avgRequestsAllowedPerSecond
+                }
+
+
+
+                // Console.WriteLine(JsonConvert.SerializeObject(_topPosts, Formatting.Indented));
+
+                // Console.WriteLine(JsonConvert.SerializeObject(_topUsers, Formatting.Indented));
+
+                // var content = JsonConvert.DeserializeObject<dynamic>(response?.Content ?? "{}");
+
+            } while (before != null);
 
                 Console.WriteLine(count);
 
