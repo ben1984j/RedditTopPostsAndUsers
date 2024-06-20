@@ -1,3 +1,5 @@
+using RedditTopPostsAndUsers;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -21,5 +23,12 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
+
+var redditApi = new RedditApi(
+    app.Configuration["RedditApiClientId"],
+    app.Configuration["RedditApiClientSecret"]
+);
+
+await redditApi.SetAccessToken();
 
 app.Run();
