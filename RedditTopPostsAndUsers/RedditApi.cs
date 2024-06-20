@@ -13,6 +13,7 @@ namespace RedditTopPostsAndUsers
 
         private readonly string _clientId;
         private readonly string _clientSecret;
+        private readonly SubredditStatisticsRepository _subredditStatisticsRepository;
 
         // private const string _subreddit = "music";
 
@@ -29,10 +30,12 @@ namespace RedditTopPostsAndUsers
 
         private readonly Semaphore _apiRequestLock = new Semaphore(1, 1);
 
-        public RedditApi(string clientId, string clientSecret)
+        public RedditApi(string clientId, string clientSecret, SubredditStatisticsRepository subredditStatisticsRepository)
         {
             _clientId = clientId;
             _clientSecret = clientSecret;
+
+            _subredditStatisticsRepository = subredditStatisticsRepository;
 
             // var b = new  OAuth2AuthorizationRequestHeaderAuthenticator()
             // {
@@ -162,6 +165,12 @@ namespace RedditTopPostsAndUsers
 
                 string? before = _firstPostId;
 
+            var statistics = new SubredditStatisticsModel()
+            {
+                Posts = new List<SubredditStatisticsPostModel>(),
+                Users = new List<SubredditStatisticsUserModel>()
+            };
+
                 do
                 {
                     var restClient = new RestClient(
@@ -226,14 +235,14 @@ namespace RedditTopPostsAndUsers
 
                     // Console.WriteLine(title);
 
-                    _posts.Add(new SubredditStatisticsPostModel()
+                    statistics.Posts.Add(new SubredditStatisticsPostModel()
                     {
                         Title = title,
                         Url = result?.Data?.Permalink,
                         Upvotes = result?.Data?.Ups ?? 0
                     });
 
-                    var user = _users.FirstOrDefault(x => x.Username == author);
+                    var user = statistics.Users.FirstOrDefault(x => x.Username == author);
 
                     if (user == null)
                     {
@@ -242,7 +251,7 @@ namespace RedditTopPostsAndUsers
                             Username = author,
                             PostCount = 0
                         };
-                        _users.Add(user);
+                        statistics.Users.Add(user);
                     }
 
                     user.PostCount++;
@@ -298,8 +307,9 @@ namespace RedditTopPostsAndUsers
 
                 Console.WriteLine($"Retrieved {count} posts");
 
-            Console.WriteLine(JsonConvert.SerializeObject(_posts.OrderByDescending(x => x.Upvotes).Take(2), Formatting.Indented));
-            Console.WriteLine(JsonConvert.SerializeObject(_users.OrderByDescending(x => x.PostCount).Take(2), Formatting.Indented));
+             _subredditStatisticsRepository.SetStatistics(subreddit, statistics);
+
+            // is it oK for API to read from repo while this is happening?  i think so.  don't need to lock it.
 
             _apiRequestLock.Release();
             //}

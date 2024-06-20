@@ -31,7 +31,8 @@ app.MapControllers();
 
 var redditApi = new RedditApi(
     app.Configuration["RedditApiClientId"],
-    app.Configuration["RedditApiClientSecret"]
+    app.Configuration["RedditApiClientSecret"],
+    new SubredditStatisticsRepository()
 );
 
 await redditApi.SetAccessToken();
