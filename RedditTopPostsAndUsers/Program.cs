@@ -9,7 +9,12 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// builder.Services.AddScoped
+
+
 var app = builder.Build();
+
+// app.Services.GetService
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

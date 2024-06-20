@@ -21,9 +21,9 @@ namespace RedditTopPostsAndUsers
         private decimal _rateLimitRemainingRequests = 0;
         private decimal _rateLimitRemainingSecondsUntilReset = 0;
 
-        private readonly Dictionary<string, int> _topPosts = new Dictionary<string, int>();
+        private readonly Dictionary<string, int> _posts = new Dictionary<string, int>();
 
-        private readonly Dictionary<string, int> _topUsers = new Dictionary<string, int>();
+        private readonly Dictionary<string, int> _users = new Dictionary<string, int>();
 
         private readonly Semaphore _apiRequestLock = new Semaphore(1, 1);
 
@@ -72,6 +72,8 @@ namespace RedditTopPostsAndUsers
 
         public async Task SetFirstPostId(string subreddit)
         {
+            // TODO: this could just be in the other loop.
+
             // tODO: keep dicts of subreddits?  should i even implement it this way?
             // need a diff. class per subreddit, but keep api shared.
             // need a timer to determine when to refresh token too.  but for now, it's static.
@@ -153,8 +155,8 @@ namespace RedditTopPostsAndUsers
             //{
                 _apiRequestLock.WaitOne();
 
-                _topPosts.Clear(); // yes, b/c we're marching through the whole thing again.
-                _topUsers.Clear(); // for this one we don't need historical data but may as well update since we're already marching through.
+                _posts.Clear(); // yes, b/c we're marching through the whole thing again.
+                _users.Clear(); // for this one we don't need historical data but may as well update since we're already marching through.
 
                 string? before = _firstPostId;
 
@@ -174,9 +176,11 @@ namespace RedditTopPostsAndUsers
 
                     request.AddQueryParameter("before", before);
 
+
+
                 request.AddQueryParameter("limit", "5"); // TODO: TEST
 
-                request.AddHeader("User-Agent", "TopPostsAndUsers v1.0 by u/ben1984j");
+                request.AddHeader("User-Agent", "TopPostsAndUsers v1.0 by u/ben1984j"); // TODO: private var.
 
                     // request.AddBody("grant_type=client_credentials", ContentType.FormUrlEncoded);
 
@@ -187,6 +191,8 @@ namespace RedditTopPostsAndUsers
                 {
                     var a = 2;
                 }
+
+                    //TODO: if non success, just ignore.
 
                     // TODO: if unauthorized/forbidden, setAccessToken, then return.  hard to test though w/o an old one.  use one from postman?
 
@@ -212,18 +218,17 @@ namespace RedditTopPostsAndUsers
 
                         // Console.WriteLine(title);
 
-                        _topPosts[title] = result?.Data?.Score ?? 0; // TODO: actually should be upvotes
+                        _posts[title] = result?.Data?.Ups ?? 0; // TODO: actually should be upvotes
 
                         // _topUsers[author] = result?.Data?.Score ?? 0;
 
                         // TODO: can't keep adding to top users...need to reset.
 
-                        if (!_topUsers.ContainsKey(author))
+                        if (!_users.ContainsKey(author))
                         {
-                            _topUsers[author] = 0;
+                            _users[author] = 0;
                         }
-
-                        _topUsers[author]++;
+                        _users[author]++;
                     }
 
                 decimal rateLimitRemainingRequests;
@@ -238,13 +243,14 @@ namespace RedditTopPostsAndUsers
 
                 if (rateLimitRemainingRequests == 0)
                 {
-                    await Task.Delay((int)(rateLimitRemainingSecondsUntilReset * 1000));
                     Console.WriteLine($"Hit request limit; waiting for {rateLimitRemainingSecondsUntilReset} seconds");
+
+                    await Task.Delay((int)(rateLimitRemainingSecondsUntilReset * 1000));
                 }
                 else
                 {
                     var avgAllowableIntervalBetweenRequests = rateLimitRemainingSecondsUntilReset / rateLimitRemainingRequests;
-                    Console.WriteLine($"Waiting for {avgAllowableIntervalBetweenRequests} seconds to avoid hitting request limit");
+                    Console.WriteLine($"Waiting for {avgAllowableIntervalBetweenRequests} seconds to stay within request limit");
 
                     await Task.Delay((int)(avgAllowableIntervalBetweenRequests * 1000));
 

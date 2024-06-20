@@ -8,8 +8,10 @@ namespace RedditTopPostsAndUsers
 
         public string? Name { get; set; } // unique ID, used for pagination of subsequent requests
 
+        public string? Permalink { get; set; }
+
         public string? Author { get; set; }
 
-        public int Score { get; set; }
+        public int Ups { get; set; }
     }
 }
