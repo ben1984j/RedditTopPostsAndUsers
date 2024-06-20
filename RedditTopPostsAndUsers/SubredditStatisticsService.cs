@@ -16,19 +16,6 @@ namespace RedditTopPostsAndUsers
         }
 
 
-        public async Task<string?> GetFirstPostId(string subreddit)
-        {
-            var response = await _redditApi.GetNewPosts(subreddit, before: "", limit: "1");
-
-            // TODO: handle non oK.
-
-            var responseObj = JsonConvert.DeserializeObject<RedditApiResponseModel<RedditApiResponseListingModel<RedditApiResponseModel<RedditApiResponseLinkModel>>>>(response?.Content ?? "{}");
-
-            return responseObj?.Data?.Children?.FirstOrDefault()?.Data?.Name;
-
-            //}
-        }
-
         public async Task MonitorSubreddit(string subreddit)
         {
             // TODO: test invalid subreddit name.
@@ -122,5 +109,20 @@ namespace RedditTopPostsAndUsers
 
                 _subredditStatisticsRepository.SetStatistics(subreddit, statistics);
             }
+
+
+
+        private async Task<string?> GetFirstPostId(string subreddit)
+        {
+            var response = await _redditApi.GetNewPosts(subreddit, before: "", limit: "1");
+
+            // TODO: handle non oK.
+
+            var responseObj = JsonConvert.DeserializeObject<RedditApiResponseModel<RedditApiResponseListingModel<RedditApiResponseModel<RedditApiResponseLinkModel>>>>(response?.Content ?? "{}");
+
+            return responseObj?.Data?.Children?.FirstOrDefault()?.Data?.Name;
+
+            //}
         }
+    }
     }
