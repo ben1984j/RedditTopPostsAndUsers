@@ -15,30 +15,18 @@ namespace RedditTopPostsAndUsers
             _subredditStatisticsRepository = subredditStatisticsRepository;
         }
 
-
         public async Task MonitorSubreddit(string subreddit)
         {
             // TODO: test invalid subreddit name.
 
-            // tODO: keep dicts of subreddits?  should i even implement it this way?
-            // need a diff. class per subreddit, but keep api shared.
-            // need a timer to determine when to refresh token too.  but for now, it's static.
             var firstPostId = await GetFirstPostId(subreddit) ?? throw new Exception("Error retrieving initial post from subreddit.");
             // tODO: handle if null.  can't continue.
 
-            // firstPostId = "t3_1djr9q7"; // tODO: TESTING.
-
-            // OR I mean it's prob fine.
-
             while (true)
             {
-
-                    await SetSubredditStatistics(subreddit, firstPostId);
-
-                    // await Task.Delay(5000); // tODO...reasonable refresh interval.  OR just let built in delay do its thing.
+                await SetSubredditStatistics(subreddit, firstPostId);
             }
         }
-
 
         private async Task<string?> GetFirstPostId(string subreddit)
         {
@@ -49,8 +37,6 @@ namespace RedditTopPostsAndUsers
             var responseObj = JsonConvert.DeserializeObject<RedditApiResponseModel<RedditApiResponseListingModel<RedditApiResponseModel<RedditApiResponseLinkModel>>>>(response?.Content ?? "{}");
 
             return responseObj?.Data?.Children?.FirstOrDefault()?.Data?.Name;
-
-            //}
         }
 
         private async Task SetSubredditStatistics(string subreddit, string firstPostId)
@@ -71,12 +57,9 @@ namespace RedditTopPostsAndUsers
                 {
                     var response = await _redditApi.GetNewPosts(subreddit, before: before, limit: "100");
 
-
-
-                if (response?.StatusCode != HttpStatusCode.OK)
+                    if (response?.StatusCode != HttpStatusCode.OK)
                     {
-                    // tODO: if unauthorized, refresh token and let it go next time.
-
+                        // tODO: if unauthorized, refresh token and let it go next time.
                         return;
                         // TODO: log
                     }
@@ -84,13 +67,11 @@ namespace RedditTopPostsAndUsers
 
                     var responseObj = JsonConvert.DeserializeObject<RedditApiResponseModel<RedditApiResponseListingModel<RedditApiResponseModel<RedditApiResponseLinkModel>>>>(response?.Content ?? "{}");
 
-
                     before = responseObj?.Data?.Children?.FirstOrDefault()?.Data?.Name;
 
                     foreach (var result in responseObj?.Data?.Children ?? Enumerable.Empty<RedditApiResponseModel<RedditApiResponseLinkModel>>())
                     {
                         count++;
-
 
                         statistics.Posts.Add(new SubredditStatisticsPostModel()
                         {
@@ -99,11 +80,8 @@ namespace RedditTopPostsAndUsers
                             Upvotes = result?.Data?.Ups ?? 0
                         });
 
-                    var author = result?.Data?.Author;
-
-
-                    var user = statistics.Users.FirstOrDefault(x => x.Username == author);
-
+                        var author = result?.Data?.Author;
+                        var user = statistics.Users.FirstOrDefault(x => x.Username == author);
                         if (user == null)
                         {
                             user = new SubredditStatisticsUserModel()
@@ -113,7 +91,6 @@ namespace RedditTopPostsAndUsers
                             };
                             statistics.Users.Add(user);
                         }
-
                         user.PostCount++;
                     }
 
@@ -123,6 +100,5 @@ namespace RedditTopPostsAndUsers
 
                 _subredditStatisticsRepository.SetStatistics(subreddit, statistics);
             }
-
-    }
+        }
     }

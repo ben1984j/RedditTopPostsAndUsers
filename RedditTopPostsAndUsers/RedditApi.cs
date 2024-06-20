@@ -2,7 +2,6 @@
 using RestSharp;
 using RestSharp.Authenticators;
 using RestSharp.Authenticators.OAuth2;
-using System.Net;
 
 namespace RedditTopPostsAndUsers
 {
@@ -23,81 +22,70 @@ namespace RedditTopPostsAndUsers
             _clientId = clientId;
             _clientSecret = clientSecret;
 
-            // _accessToken = "bad";
+            // _accessToken = "bad"; // TODO: test this as well as expired token.
         }
-
 
         public async Task<RestResponse?> GetNewPosts(string subreddit, string before, string limit)
         {
-            // TODO: check if access token null?
-
-
             Console.WriteLine($"Getting new posts from subreddit {subreddit} (before = '{before}', limit = '{limit}')");
 
- 
-                _apiRequestLock.WaitOne();
+            _apiRequestLock.WaitOne();
 
-            if (_accessToken == null)
+            try
             {
-                await SetAccessToken();
-            }
+                if (_accessToken == null)
+                {
+                    await SetAccessToken();
+                }
 
-                    var restClient = new RestClient(
-                        new RestClientOptions(_oauthUrl)
-                        {
-                            Authenticator = new OAuth2AuthorizationRequestHeaderAuthenticator(_accessToken, "Bearer")
-                        }
-                    );
+                var restClient = new RestClient(
+                    new RestClientOptions(_oauthUrl)
+                    {
+                        Authenticator = new OAuth2AuthorizationRequestHeaderAuthenticator(_accessToken, "Bearer")
+                    }
+                );
 
-                    var request = new RestRequest(
-                        $"/r/{subreddit}/new",
-                        Method.Get
-                    );
+                var request = new RestRequest(
+                    $"/r/{subreddit}/new",
+                    Method.Get
+                );
 
-                    request.AddQueryParameter("before", before);
+                request.AddQueryParameter("before", before);
+                request.AddQueryParameter("limit", limit);
+                request.AddHeader("User-Agent", _userAgent);
 
+                var response = await restClient.ExecuteAsync(request);
 
+                //if (response.StatusCode == HttpStatusCode.Unauthorized || response.StatusCode == HttpStatusCode.Forbidden)
+                //{
+                //    _accessToken = null; // likely expired; set to null so will be refreshed next time
+                //    return response;
+                //}
 
-                request.AddQueryParameter("limit", limit); // TODO: TEST
-
-                request.AddHeader("User-Agent", _userAgent); // TODO: private var.
-
-
-                    var response = await restClient.ExecuteAsync(request);
-
-
-            //if (response.StatusCode == HttpStatusCode.Unauthorized || response.StatusCode == HttpStatusCode.Forbidden)
-            //{
-            //    _accessToken = null; // likely expired; set to null so will be refreshed next time
-            //    return response;
-            //}
-
-
-
-            decimal.TryParse(response?.GetHeaderValue("x-ratelimit-remaining"), out var rateLimitRemainingRequests);
+                decimal.TryParse(response?.GetHeaderValue("x-ratelimit-remaining"), out var rateLimitRemainingRequests);
                 decimal.TryParse(response?.GetHeaderValue("x-ratelimit-reset"), out var rateLimitRemainingSecondsUntilReset);
 
-                //Console.WriteLine(response?.GetHeaderValue("x-ratelimit-remaining"));
-                //Console.WriteLine(response?.GetHeaderValue("x-ratelimit-reset"));
+                //Console.WriteLine(rateLimitRemainingRequests);
+                //Console.WriteLine(rateLimitRemainingSecondsUntilReset);
 
                 if (rateLimitRemainingRequests == 0)
                 {
                     Console.WriteLine($"Hit request limit; waiting for {rateLimitRemainingSecondsUntilReset} seconds");
-
                     await Task.Delay((int)(rateLimitRemainingSecondsUntilReset * 1000));
                 }
                 else
                 {
                     var avgAllowableIntervalBetweenRequests = rateLimitRemainingSecondsUntilReset / rateLimitRemainingRequests;
                     Console.WriteLine($"Waiting for {avgAllowableIntervalBetweenRequests} seconds to stay within request limit");
-
                     await Task.Delay((int)(avgAllowableIntervalBetweenRequests * 1000));
                 }
 
-            _apiRequestLock.Release(); // TODO: try/finally.
-
-            return response;
-
+                return response;
+            }
+            finally
+            {
+                _apiRequestLock.Release();
+            }
         }
 
 
