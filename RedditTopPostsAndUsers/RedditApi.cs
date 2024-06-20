@@ -22,40 +22,8 @@ namespace RedditTopPostsAndUsers
         {
             _clientId = clientId;
             _clientSecret = clientSecret;
-        }
 
-        public async Task SetAccessToken()
-        {
-            // tODO: lock.
-
-            _apiRequestLock.WaitOne();
-
-            var restClient = new RestClient(
-                new RestClientOptions(_baseUrl)
-                {
-                    Authenticator = new HttpBasicAuthenticator(
-                        _clientId,
-                        _clientSecret
-                    )
-                }
-            );
-
-            var request = new RestRequest(
-                "/api/v1/access_token",
-                Method.Post
-            );
-
-            request.AddBody("grant_type=client_credentials", ContentType.FormUrlEncoded);
-
-            var response = await restClient.ExecuteAsync(request);
-
-            var content = JsonConvert.DeserializeObject<dynamic>(response?.Content ?? "{}");
-
-            _accessToken = content?.access_token;
-
-            Console.WriteLine(_accessToken);
-
-            _apiRequestLock.Release();
+            // _accessToken = "bad";
         }
 
 
@@ -68,6 +36,11 @@ namespace RedditTopPostsAndUsers
 
  
                 _apiRequestLock.WaitOne();
+
+            if (_accessToken == null)
+            {
+                await SetAccessToken();
+            }
 
                     var restClient = new RestClient(
                         new RestClientOptions(_oauthUrl)
@@ -93,10 +66,10 @@ namespace RedditTopPostsAndUsers
                     var response = await restClient.ExecuteAsync(request);
 
 
-            //if (response.StatusCode == HttpStatusCode.Unauthorized)
+            //if (response.StatusCode == HttpStatusCode.Unauthorized || response.StatusCode == HttpStatusCode.Forbidden)
             //{
-            //    await SetAccessToken(); // likely expired
-            //    return response; // don't bother retrying, should work next time
+            //    _accessToken = null; // likely expired; set to null so will be refreshed next time
+            //    return response;
             //}
 
 
@@ -126,5 +99,37 @@ namespace RedditTopPostsAndUsers
             return response;
 
         }
+
+
+        private async Task SetAccessToken()
+        {
+            var restClient = new RestClient(
+                new RestClientOptions(_baseUrl)
+                {
+                    Authenticator = new HttpBasicAuthenticator(
+                        _clientId,
+                        _clientSecret
+                    )
+                }
+            );
+
+            var request = new RestRequest(
+                "/api/v1/access_token",
+                Method.Post
+            );
+
+            request.AddBody("grant_type=client_credentials", ContentType.FormUrlEncoded);
+
+            var response = await restClient.ExecuteAsync(request);
+
+            // TODO: failure should be show stopper.
+
+            var content = JsonConvert.DeserializeObject<dynamic>(response?.Content ?? "{}");
+
+            _accessToken = content?.access_token;
+
+            Console.WriteLine(_accessToken);
+        }
+
     }
 }

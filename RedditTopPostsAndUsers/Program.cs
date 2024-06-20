@@ -34,8 +34,6 @@ var redditApi = new RedditApi(
     app.Configuration["RedditApiClientSecret"]
 );
 
-await redditApi.SetAccessToken();
-
 var subredditStatisticsService = new SubredditStatisticsService(
     redditApi,
     new SubredditStatisticsRepository()
