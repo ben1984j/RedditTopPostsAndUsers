@@ -2,6 +2,7 @@
 using RestSharp;
 using RestSharp.Authenticators;
 using RestSharp.Authenticators.OAuth2;
+using System.Net;
 
 namespace RedditTopPostsAndUsers
 {
@@ -115,6 +116,8 @@ namespace RedditTopPostsAndUsers
 
         public async Task MonitorSubreddit(string subreddit)
         {
+            
+
             // tODO: keep dicts of subreddits?  should i even implement it this way?
             // need a diff. class per subreddit, but keep api shared.
             // need a timer to determine when to refresh token too.  but for now, it's static.
@@ -124,16 +127,20 @@ namespace RedditTopPostsAndUsers
                 await SetFirstPostId(subreddit);
             //}
 
+            
+
             while (true)
             {
                 await GetSubredditStatistics(subreddit);
 
-                await Task.Delay(5000); // tODO...reasonable refresh interval.  OR just let built in delay do its thing.
+                // await Task.Delay(5000); // tODO...reasonable refresh interval.  OR just let built in delay do its thing.
             }
         }
 
         public async Task GetSubredditStatistics(string subreddit)
         {
+            Console.WriteLine($"Getting all posts from subreddit {subreddit} starting after initial post {_firstPostId}");
+
             // tODO: keep dicts of subreddits?  should i even implement it this way?
             // need a diff. class per subreddit, but keep api shared.
             // need a timer to determine when to refresh token too.  but for now, it's static.
@@ -167,13 +174,23 @@ namespace RedditTopPostsAndUsers
 
                     request.AddQueryParameter("before", before);
 
-                request.AddQueryParameter("limit", "1"); // TODO: TEST
+                request.AddQueryParameter("limit", "5"); // TODO: TEST
 
                 request.AddHeader("User-Agent", "TopPostsAndUsers v1.0 by u/ben1984j");
 
                     // request.AddBody("grant_type=client_credentials", ContentType.FormUrlEncoded);
 
                     var response = await restClient.ExecuteAsync(request);
+
+
+                    if (response.StatusCode == HttpStatusCode.TooManyRequests)
+                {
+                    var a = 2;
+                }
+
+                    // TODO: if unauthorized/forbidden, setAccessToken, then return.  hard to test though w/o an old one.  use one from postman?
+
+                    // TODO: only do the below if 200 ok.
 
                     // Console.WriteLine(response.Content);
 
@@ -193,7 +210,7 @@ namespace RedditTopPostsAndUsers
                         var title = result?.Data?.Title ?? string.Empty;
                         var author = result?.Data?.Author ?? string.Empty;
 
-                        Console.WriteLine(title);
+                        // Console.WriteLine(title);
 
                         _topPosts[title] = result?.Data?.Score ?? 0; // TODO: actually should be upvotes
 
@@ -212,12 +229,12 @@ namespace RedditTopPostsAndUsers
                 decimal rateLimitRemainingRequests;
                 decimal rateLimitRemainingSecondsUntilReset;
 
-                
+                // TODO: will these be present on 429?
                 decimal.TryParse(response?.GetHeaderValue("x-ratelimit-remaining"), out rateLimitRemainingRequests);
                 decimal.TryParse(response?.GetHeaderValue("x-ratelimit-reset"), out rateLimitRemainingSecondsUntilReset);
 
-                Console.WriteLine(response?.GetHeaderValue("x-ratelimit-remaining"));
-                Console.WriteLine(response?.GetHeaderValue("x-ratelimit-reset"));
+                //Console.WriteLine(response?.GetHeaderValue("x-ratelimit-remaining"));
+                //Console.WriteLine(response?.GetHeaderValue("x-ratelimit-reset"));
 
                 if (rateLimitRemainingRequests == 0)
                 {
@@ -244,7 +261,7 @@ namespace RedditTopPostsAndUsers
 
             } while (before != null);
 
-                Console.WriteLine(count);
+                Console.WriteLine($"Retrieved {count} posts");
 
                 _apiRequestLock.Release();
             //}
