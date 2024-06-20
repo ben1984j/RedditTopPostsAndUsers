@@ -4,12 +4,12 @@ using System.Net;
 
 namespace RedditTopPostsAndUsers
 {
-    public class SubredditStatisticsService
+    public class SubredditStatisticsService : ISubredditStatisticsService
     {
-        private readonly RedditApi _redditApi;
-        private readonly SubredditStatisticsRepository _subredditStatisticsRepository;
+        private readonly IRedditApi _redditApi;
+        private readonly ISubredditStatisticsRepository _subredditStatisticsRepository;
 
-        public SubredditStatisticsService(RedditApi redditApi, SubredditStatisticsRepository subredditStatisticsRepository)
+        public SubredditStatisticsService(IRedditApi redditApi, ISubredditStatisticsRepository subredditStatisticsRepository)
         {
             _redditApi = redditApi;
             _subredditStatisticsRepository = subredditStatisticsRepository;
@@ -23,7 +23,7 @@ namespace RedditTopPostsAndUsers
             // tODO: keep dicts of subreddits?  should i even implement it this way?
             // need a diff. class per subreddit, but keep api shared.
             // need a timer to determine when to refresh token too.  but for now, it's static.
-            var firstPostId = await GetFirstPostId(subreddit) ?? throw new Exception("Subreddit contains no posts.");
+            var firstPostId = await GetFirstPostId(subreddit) ?? throw new Exception("Error retrieving initial post from subreddit.");
             // tODO: handle if null.  can't continue.
 
             // firstPostId = "t3_1djr9q7"; // tODO: TESTING.
@@ -39,7 +39,21 @@ namespace RedditTopPostsAndUsers
             }
         }
 
-            public async Task SetSubredditStatistics(string subreddit, string firstPostId)
+
+        private async Task<string?> GetFirstPostId(string subreddit)
+        {
+            var response = await _redditApi.GetNewPosts(subreddit, before: "", limit: "1");
+
+            // TODO: handle non oK.
+
+            var responseObj = JsonConvert.DeserializeObject<RedditApiResponseModel<RedditApiResponseListingModel<RedditApiResponseModel<RedditApiResponseLinkModel>>>>(response?.Content ?? "{}");
+
+            return responseObj?.Data?.Children?.FirstOrDefault()?.Data?.Name;
+
+            //}
+        }
+
+        private async Task SetSubredditStatistics(string subreddit, string firstPostId)
             {
                 Console.WriteLine($"Getting all posts from subreddit {subreddit} starting after initial post {firstPostId}");
 
@@ -110,19 +124,5 @@ namespace RedditTopPostsAndUsers
                 _subredditStatisticsRepository.SetStatistics(subreddit, statistics);
             }
 
-
-
-        private async Task<string?> GetFirstPostId(string subreddit)
-        {
-            var response = await _redditApi.GetNewPosts(subreddit, before: "", limit: "1");
-
-            // TODO: handle non oK.
-
-            var responseObj = JsonConvert.DeserializeObject<RedditApiResponseModel<RedditApiResponseListingModel<RedditApiResponseModel<RedditApiResponseLinkModel>>>>(response?.Content ?? "{}");
-
-            return responseObj?.Data?.Children?.FirstOrDefault()?.Data?.Name;
-
-            //}
-        }
     }
     }

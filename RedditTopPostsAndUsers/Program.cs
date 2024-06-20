@@ -4,17 +4,19 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
+builder.Services.AddSingleton<IRedditApi, RedditApi>(sp => new RedditApi(
+    builder.Configuration["RedditApiClientId"],
+    builder.Configuration["RedditApiClientSecret"]
+));
+builder.Services.AddSingleton<ISubredditStatisticsRepository, SubredditStatisticsRepository>();
+builder.Services.AddSingleton<ISubredditStatisticsService, SubredditStatisticsService>();
+
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// builder.Services.AddScoped
-
-
 var app = builder.Build();
-
-// app.Services.GetService
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -29,16 +31,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-var redditApi = new RedditApi(
-    app.Configuration["RedditApiClientId"],
-    app.Configuration["RedditApiClientSecret"]
-);
-
-var subredditStatisticsService = new SubredditStatisticsService(
-    redditApi,
-    new SubredditStatisticsRepository()
-);
-
+var subredditStatisticsService = app.Services.GetService<ISubredditStatisticsService>();
 subredditStatisticsService.MonitorSubreddit("music");
 
 app.Run();

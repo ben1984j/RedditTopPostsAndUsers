@@ -6,7 +6,7 @@ using System.Net;
 
 namespace RedditTopPostsAndUsers
 {
-    public class RedditApi
+    public class RedditApi : IRedditApi
     {
         private const string _baseUrl = "https://www.reddit.com";
         private const string _oauthUrl = "https://oauth.reddit.com";

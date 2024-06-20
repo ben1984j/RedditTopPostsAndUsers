@@ -7,7 +7,7 @@ using System.Net;
 
 namespace RedditTopPostsAndUsers
 {
-    public class SubredditStatisticsRepository
+    public class SubredditStatisticsRepository : ISubredditStatisticsRepository
     {
 
         private readonly ConcurrentDictionary<string, SubredditStatisticsModel> _statistics = new ConcurrentDictionary<string, SubredditStatisticsModel>();
