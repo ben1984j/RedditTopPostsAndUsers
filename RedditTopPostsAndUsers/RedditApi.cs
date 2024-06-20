@@ -1,4 +1,5 @@
-﻿using RestSharp;
+﻿using Newtonsoft.Json;
+using RestSharp;
 using RestSharp.Authenticators;
 using RestSharp.Authenticators.OAuth2;
 
@@ -12,9 +13,13 @@ namespace RedditTopPostsAndUsers
         private readonly string _clientId;
         private readonly string _clientSecret;
 
-        private const string _subreddit = "music";
+        // private const string _subreddit = "music";
 
         private string? _accessToken = null;
+
+        private readonly Dictionary<string, int> _topPosts = new Dictionary<string, int>();
+
+        private readonly Semaphore _apiRequestLock = new Semaphore(1, 1);
 
         public RedditApi(string clientId, string clientSecret)
         {
@@ -48,9 +53,47 @@ namespace RedditTopPostsAndUsers
 
             request.AddBody("grant_type=client_credentials", ContentType.FormUrlEncoded);
 
-            var response = await restClient.ExecutePostAsync(request);
+            var response = await restClient.ExecuteAsync(request);
 
-            Console.WriteLine(response.Content);
+            var content = JsonConvert.DeserializeObject<dynamic>(response?.Content ?? "{}");
+
+            _accessToken = content?.access_token;
+
+            Console.WriteLine(_accessToken);
+        }
+
+        public async Task MonitorSubreddit(string subreddit)
+        {
+            // tODO: keep dicts of subreddits?  should i even implement it this way?
+            // need a diff. class per subreddit, but keep api shared.
+            // need a timer to determine when to refresh token too.  but for now, it's static.
+
+            using (_apiRequestLock)
+            {
+                _apiRequestLock.WaitOne();
+
+                var restClient = new RestClient(
+                    new RestClientOptions(_oauthUrl)
+                    {
+                        Authenticator = new OAuth2AuthorizationRequestHeaderAuthenticator(_accessToken, "Bearer")
+                    }
+                );
+
+                var request = new RestRequest(
+                    $"/r/{subreddit}/new",
+                    Method.Get
+                );
+
+                request.AddHeader("User-Agent", "TopPostsAndUsers v1.0 by u/ben1984j");
+
+                // request.AddBody("grant_type=client_credentials", ContentType.FormUrlEncoded);
+
+                var response = await restClient.ExecuteAsync(request);
+
+                Console.WriteLine(response.Content);
+
+                // var content = JsonConvert.DeserializeObject<dynamic>(response?.Content ?? "{}");
+            }
         }
     }
 }

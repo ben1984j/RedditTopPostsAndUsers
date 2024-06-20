@@ -31,4 +31,6 @@ var redditApi = new RedditApi(
 
 await redditApi.SetAccessToken();
 
+redditApi.MonitorSubreddit("music");
+
 app.Run();
