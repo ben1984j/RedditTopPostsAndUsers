@@ -67,17 +67,19 @@ namespace RedditTopPostsAndUsers.ExternalApis
                 //Console.WriteLine(rateLimitRemainingRequests);
                 //Console.WriteLine(rateLimitRemainingSecondsUntilReset);
 
-                if (rateLimitRemainingRequests == 0)
+                if (response?.StatusCode == HttpStatusCode.TooManyRequests)
                 {
-                    Console.WriteLine($"Hit request limit; waiting for {rateLimitRemainingSecondsUntilReset} seconds");
+                    Console.WriteLine($"Hit request limit; waiting for {rateLimitRemainingSecondsUntilReset} seconds until request limit resets");
                     await Task.Delay((int)(rateLimitRemainingSecondsUntilReset * 1000));
                 }
-                else
+                else if (response?.StatusCode == HttpStatusCode.OK)
                 {
                     var avgAllowableIntervalBetweenRequests = rateLimitRemainingSecondsUntilReset / rateLimitRemainingRequests;
                     Console.WriteLine($"Waiting for {avgAllowableIntervalBetweenRequests} seconds to stay within request limit");
                     await Task.Delay((int)(avgAllowableIntervalBetweenRequests * 1000));
                 }
+
+                // else caller will have to handle; likely just ignore and try again
 
                 return response;
             }
