@@ -43,6 +43,8 @@ namespace RedditTopPostsAndUsers.ExternalApis
                         Authenticator = new OAuth2AuthorizationRequestHeaderAuthenticator(_accessToken, "Bearer")
                     }
                 );
+                // TODO: would be more ideal to reuse the same restClient for all requests to the _oauthUrl,
+                // though the restClient would have to be recreated whenever the access token changes
 
                 var request = new RestRequest(
                     $"/r/{subreddit}/new",
@@ -101,6 +103,8 @@ namespace RedditTopPostsAndUsers.ExternalApis
                     )
                 }
             );
+            // This operation is not performed very frequently so it is OK to create a new
+            // rest client each time
 
             var request = new RestRequest(
                 "/api/v1/access_token",
@@ -110,8 +114,6 @@ namespace RedditTopPostsAndUsers.ExternalApis
             request.AddBody("grant_type=client_credentials", ContentType.FormUrlEncoded);
 
             var response = await restClient.ExecuteAsync(request);
-
-            // TODO: failure should be show stopper.
 
             var content = JsonConvert.DeserializeObject<dynamic>(response?.Content ?? "{}");
 

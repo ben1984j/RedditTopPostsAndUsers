@@ -2,7 +2,6 @@
 using RedditTopPostsAndUsers.ExternalApis;
 using RedditTopPostsAndUsers.Models;
 using RedditTopPostsAndUsers.Repositories;
-using System.Net;
 
 namespace RedditTopPostsAndUsers.Services
 {
