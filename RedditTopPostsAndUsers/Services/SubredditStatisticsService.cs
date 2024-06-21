@@ -26,20 +26,23 @@ namespace RedditTopPostsAndUsers.Services
 
         public async Task MonitorSubreddit(string subreddit, int? maxIterations = null)
         {
-            try
-            {
-                var firstPostId = await GetFirstPostId(subreddit); // if this throws an error, monitoring will not proceed
+            var firstPostId = await GetFirstPostId(subreddit); // if this throws an error, monitoring will not proceed
 
-                var i = 0;
-                while (maxIterations == null || i < maxIterations)
+            var i = 0;
+            while (maxIterations == null || i < maxIterations)
+            {
+                try
                 {
                     await SetSubredditStatistics(subreddit, firstPostId);
-                    i++;
+
                 }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Terminating monitoring of subreddit '{subreddit}' as an exception was encountered: {ex}");
+                catch (Exception ex)
+                {
+                    // Log and swallow error, then continue attempting to monitor
+                    Console.WriteLine($"Exception encountered while monitoring subreddit '{subreddit}': {ex}");
+                }
+
+                i++;
             }
         }
 
@@ -55,66 +58,58 @@ namespace RedditTopPostsAndUsers.Services
 
         private async Task SetSubredditStatistics(string subreddit, string firstPostId)
         {
-            try
+            Console.WriteLine($"Getting all posts from subreddit '{subreddit}' starting after initial post '{firstPostId}'");
+
+            var count = 0;
+
+            string? before = firstPostId;
+
+            var statistics = new SubredditStatisticsModel()
             {
-                Console.WriteLine($"Getting all posts from subreddit '{subreddit}' starting after initial post '{firstPostId}'");
+                Posts = new List<SubredditStatisticsPostModel>(),
+                Users = new List<SubredditStatisticsUserModel>()
+            };
 
-                var count = 0;
+            do
+            {
+                var response = await _redditApi.GetNewPosts(subreddit, before: before, limit: _redditApiPageSize.ToString());
 
-                string? before = firstPostId;
+                // Assume OK response; if not, this line will throw
+                var responseObj = JsonConvert.DeserializeObject<RedditApiResponseModel<RedditApiResponseListingModel<RedditApiResponseModel<RedditApiResponseLinkModel>>>>(response?.Content ?? "{}");
 
-                var statistics = new SubredditStatisticsModel()
+                before = responseObj?.Data?.Children?.FirstOrDefault()?.Data?.Name;
+
+                foreach (var result in responseObj?.Data?.Children ?? Enumerable.Empty<RedditApiResponseModel<RedditApiResponseLinkModel>>())
                 {
-                    Posts = new List<SubredditStatisticsPostModel>(),
-                    Users = new List<SubredditStatisticsUserModel>()
-                };
+                    count++;
 
-                do
-                {
-                    var response = await _redditApi.GetNewPosts(subreddit, before: before, limit: _redditApiPageSize.ToString());
-
-                    // Assume OK response; if not, this line will throw
-                    var responseObj = JsonConvert.DeserializeObject<RedditApiResponseModel<RedditApiResponseListingModel<RedditApiResponseModel<RedditApiResponseLinkModel>>>>(response?.Content ?? "{}");
-
-                    before = responseObj?.Data?.Children?.FirstOrDefault()?.Data?.Name;
-
-                    foreach (var result in responseObj?.Data?.Children ?? Enumerable.Empty<RedditApiResponseModel<RedditApiResponseLinkModel>>())
+                    statistics.Posts.Add(new SubredditStatisticsPostModel()
                     {
-                        count++;
+                        Title = result?.Data?.Title,
+                        Url = result?.Data?.Permalink,
+                        Upvotes = result?.Data?.Ups ?? 0
+                    });
 
-                        statistics.Posts.Add(new SubredditStatisticsPostModel()
+                    var author = result?.Data?.Author;
+                    var user = statistics.Users.FirstOrDefault(x => x.Username == author);
+                    if (user == null)
+                    {
+                        user = new SubredditStatisticsUserModel()
                         {
-                            Title = result?.Data?.Title,
-                            Url = result?.Data?.Permalink,
-                            Upvotes = result?.Data?.Ups ?? 0
-                        });
-
-                        var author = result?.Data?.Author;
-                        var user = statistics.Users.FirstOrDefault(x => x.Username == author);
-                        if (user == null)
-                        {
-                            user = new SubredditStatisticsUserModel()
-                            {
-                                Username = author,
-                                PostCount = 0
-                            };
-                            statistics.Users.Add(user);
-                        }
-                        user.PostCount++;
+                            Username = author,
+                            PostCount = 0
+                        };
+                        statistics.Users.Add(user);
                     }
+                    user.PostCount++;
+                }
 
-                } while (before != null);
+            } while (before != null);
 
-                Console.WriteLine($"Retrieved {count} posts from subreddit '{subreddit}' starting after initial post '{firstPostId}'");
-                Console.WriteLine();
+            Console.WriteLine($"Retrieved {count} posts from subreddit '{subreddit}' starting after initial post '{firstPostId}'");
+            Console.WriteLine();
 
-                _subredditStatisticsRepository.SetSubredditStatistics(subreddit, statistics);
-            }
-            catch (Exception ex)
-            {
-                // Log error but don't re-throw so that calling function will continue attempting to monitor
-                Console.WriteLine($"Exception encountered while monitoring subreddit '{subreddit}': {ex}");
-            }
+            _subredditStatisticsRepository.SetSubredditStatistics(subreddit, statistics);
         }
     }
 }
