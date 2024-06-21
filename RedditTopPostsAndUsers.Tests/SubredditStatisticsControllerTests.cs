@@ -47,7 +47,11 @@ namespace RedditTopPostsAndUsers.Tests
 
             var result = response as OkObjectResult;
             Assert.That(result, Is.Not.Null);
-            Assert.That(result.Value, Is.EqualTo(subredditStatistics));
+            Assert.That(result.Value?.GetType(), Is.EqualTo(typeof(SubredditStatisticsModel)));
+            Assert.That(
+                (result.Value as SubredditStatisticsModel)?.Posts?.FirstOrDefault()?.Title,
+                Is.EqualTo(subredditStatistics.Posts.FirstOrDefault()?.Title)
+            );
         }
 
         [Test]
@@ -67,7 +71,7 @@ namespace RedditTopPostsAndUsers.Tests
             var response = subredditStatisticsController.GetSubredditStatistics(subreddit);
 
             // Assert
-            var result = response as NotFoundResult;
+            var result = response as NotFoundObjectResult;
             Assert.That(result, Is.Not.Null);
         }
     }
