@@ -6,16 +6,18 @@ using System.Net;
 
 namespace RedditTopPostsAndUsers.Services
 {
-    public class SubredditMonitoringService : ISubredditMonitoringService
+    public class SubredditStatisticsService : ISubredditStatisticsService
     {
         private readonly IRedditApi _redditApi;
         private readonly ISubredditStatisticsRepository _subredditStatisticsRepository;
 
-        public SubredditMonitoringService(IRedditApi redditApi, ISubredditStatisticsRepository subredditStatisticsRepository)
+        public SubredditStatisticsService(IRedditApi redditApi, ISubredditStatisticsRepository subredditStatisticsRepository)
         {
             _redditApi = redditApi;
             _subredditStatisticsRepository = subredditStatisticsRepository;
         }
+
+        public SubredditStatisticsModel? GetSubredditStatistics(string subreddit) => _subredditStatisticsRepository.GetSubredditStatistics(subreddit);
 
         public async Task MonitorSubreddit(string subreddit)
         {
@@ -100,7 +102,7 @@ namespace RedditTopPostsAndUsers.Services
 
             Console.WriteLine($"Retrieved {count} posts");
 
-            _subredditStatisticsRepository.SetStatistics(subreddit, statistics);
+            _subredditStatisticsRepository.SetSubredditStatistics(subreddit, statistics);
         }
     }
 }

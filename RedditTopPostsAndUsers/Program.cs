@@ -11,7 +11,7 @@ builder.Services.AddSingleton<IRedditApi, RedditApi>(sp => new RedditApi(
     builder.Configuration["RedditApiClientSecret"]
 ));
 builder.Services.AddSingleton<ISubredditStatisticsRepository, SubredditStatisticsRepository>();
-builder.Services.AddSingleton<ISubredditMonitoringService, SubredditMonitoringService>();
+builder.Services.AddSingleton<ISubredditStatisticsService, SubredditStatisticsService>();
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -33,11 +33,10 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-var subredditMonitoringService = app.Services.GetService<ISubredditMonitoringService>();
+var subredditStatisticsService = app.Services.GetService<ISubredditStatisticsService>();
 foreach (var subreddit in app.Configuration["SubredditsToMonitor"]?.Split(',') ?? new string[0])
 {
-    subredditMonitoringService.MonitorSubreddit(subreddit);
+    subredditStatisticsService.MonitorSubreddit(subreddit);
 }
-
 
 app.Run();

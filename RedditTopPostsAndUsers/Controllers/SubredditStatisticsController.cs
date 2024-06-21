@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using RedditTopPostsAndUsers.Repositories;
+using RedditTopPostsAndUsers.Services;
 
 namespace RedditTopPostsAndUsers.Controllers
 {
@@ -7,23 +7,23 @@ namespace RedditTopPostsAndUsers.Controllers
     [Route("api/[controller]")]
     public class SubredditStatisticsController : ControllerBase
     {
-        private readonly ILogger<SubredditStatisticsController> _logger;
-        private readonly ISubredditStatisticsRepository _subredditStatisticsRepository;
+        // private readonly ILogger<SubredditStatisticsController> _logger;
+        private readonly ISubredditStatisticsService _subredditStatisticsService;
 
         public SubredditStatisticsController(
-            ILogger<SubredditStatisticsController> logger,
-            ISubredditStatisticsRepository subredditStatisticsRepository
+            // ILogger<SubredditStatisticsController> logger,
+            ISubredditStatisticsService subredditStatisticsService
         )
         {
-            _logger = logger;
-            _subredditStatisticsRepository = subredditStatisticsRepository;
+            // _logger = logger;
+            _subredditStatisticsService = subredditStatisticsService;
         }
 
         [HttpGet]
         [Route("{subreddit}")]
-        public IActionResult Get([FromRoute] string subreddit)
+        public IActionResult GetSubredditStatistics([FromRoute] string subreddit)
         {
-            var subredditStatistics = _subredditStatisticsRepository.GetStatistics(subreddit);
+            var subredditStatistics = _subredditStatisticsService.GetSubredditStatistics(subreddit);
 
             if (subredditStatistics == null)
             {

@@ -4,8 +4,8 @@ namespace RedditTopPostsAndUsers.Repositories
 {
     public interface ISubredditStatisticsRepository
     {
-        public SubredditStatisticsModel? GetStatistics(string subreddit);
+        public SubredditStatisticsModel? GetSubredditStatistics(string subreddit);
 
-        public void SetStatistics(string subreddit, SubredditStatisticsModel statistics);
+        public void SetSubredditStatistics(string subreddit, SubredditStatisticsModel statistics);
     }
 }

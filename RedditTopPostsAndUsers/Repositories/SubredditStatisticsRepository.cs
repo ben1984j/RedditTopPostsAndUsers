@@ -8,14 +8,14 @@ namespace RedditTopPostsAndUsers.Repositories
     {
         private readonly ConcurrentDictionary<string, SubredditStatisticsModel> _statistics = new ConcurrentDictionary<string, SubredditStatisticsModel>();
 
-        public SubredditStatisticsModel? GetStatistics(string subreddit)
+        public SubredditStatisticsModel? GetSubredditStatistics(string subreddit)
         {
             return _statistics.ContainsKey(subreddit)
                 ? _statistics[subreddit]
                 : null;
         }
 
-        public void SetStatistics(string subreddit, SubredditStatisticsModel statistics)
+        public void SetSubredditStatistics(string subreddit, SubredditStatisticsModel statistics)
         {
             _statistics[subreddit] = statistics;
 
