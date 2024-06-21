@@ -2,6 +2,7 @@
 using RestSharp;
 using RestSharp.Authenticators;
 using RestSharp.Authenticators.OAuth2;
+using System.Net;
 
 namespace RedditTopPostsAndUsers.ExternalApis
 {
@@ -21,8 +22,6 @@ namespace RedditTopPostsAndUsers.ExternalApis
         {
             _clientId = clientId;
             _clientSecret = clientSecret;
-
-            // _accessToken = "bad"; // TODO: test this as well as expired token.
         }
 
         public async Task<RestResponse?> GetNewPosts(string subreddit, string before, string limit)
@@ -56,11 +55,11 @@ namespace RedditTopPostsAndUsers.ExternalApis
 
                 var response = await restClient.ExecuteAsync(request);
 
-                //if (response.StatusCode == HttpStatusCode.Unauthorized || response.StatusCode == HttpStatusCode.Forbidden)
-                //{
-                //    _accessToken = null; // likely expired; set to null so will be refreshed next time
-                //    return response;
-                //}
+                if (response.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    _accessToken = null; // likely expired; set to null so will be refreshed on next request
+                    return response;
+                }
 
                 decimal.TryParse(response?.GetHeaderValue("x-ratelimit-remaining"), out var rateLimitRemainingRequests);
                 decimal.TryParse(response?.GetHeaderValue("x-ratelimit-reset"), out var rateLimitRemainingSecondsUntilReset);
@@ -118,6 +117,5 @@ namespace RedditTopPostsAndUsers.ExternalApis
 
             Console.WriteLine(_accessToken);
         }
-
     }
 }
