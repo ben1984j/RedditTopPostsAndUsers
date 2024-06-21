@@ -50,7 +50,6 @@ namespace RedditTopPostsAndUsers.Services
         {
             var response = await _redditApi.GetNewPosts(subreddit, before: "", limit: "1");
 
-            // If non-OK response, this will throw and bubble up to caller
             var responseObj = JsonConvert.DeserializeObject<RedditApiResponseModel<RedditApiResponseListingModel<RedditApiResponseModel<RedditApiResponseLinkModel>>>>(response?.Content ?? "{}");
 
             return responseObj?.Data?.Children?.FirstOrDefault()?.Data?.Name ?? throw new Exception($"First post not found for subreddit '{subreddit}'");
@@ -74,7 +73,6 @@ namespace RedditTopPostsAndUsers.Services
             {
                 var response = await _redditApi.GetNewPosts(subreddit, before: before, limit: _redditApiPageSize.ToString());
 
-                // Assume OK response; if not, this line will throw
                 var responseObj = JsonConvert.DeserializeObject<RedditApiResponseModel<RedditApiResponseListingModel<RedditApiResponseModel<RedditApiResponseLinkModel>>>>(response?.Content ?? "{}");
 
                 before = responseObj?.Data?.Children?.FirstOrDefault()?.Data?.Name;

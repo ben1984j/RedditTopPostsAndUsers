@@ -88,7 +88,8 @@ namespace RedditTopPostsAndUsers.Tests
                 });
 
             mockRedditApi
-                .Setup(x => x.GetNewPosts(subreddit, "post0", redditApiPageSize.ToString()))
+                .SetupSequence(x => x.GetNewPosts(subreddit, "post0", redditApiPageSize.ToString()))
+                .ThrowsAsync(new Exception("Internal server error")) // simulate transient error; monitoring should not terminate but simply move to the next iteration of the monitoring loop
                 .ReturnsAsync(new RestResponse()
                 {
                     StatusCode = HttpStatusCode.OK,
@@ -181,12 +182,53 @@ namespace RedditTopPostsAndUsers.Tests
             );
 
             // Act
-            await subredditStatisticsService.MonitorSubreddit(subreddit, maxIterations: 1);
+            await subredditStatisticsService.MonitorSubreddit(subreddit, maxIterations: 2);
 
             // Assert
             mockRepository.VerifyAll();
         }
 
-        // TODO: negative tests, covering what happens when Reddit API returns non-success response, etc.
+        [Test]
+        public void MonitorSubredditThrowsWhenFirstPostNotFound()
+        {
+            // Arrange
+            var subreddit = "funny";
+
+            var mockRepository = new MockRepository(MockBehavior.Strict);
+
+            var mockRedditApi = mockRepository.Create<IRedditApi>();
+            mockRedditApi
+                .Setup(x => x.GetNewPosts(subreddit, "", "1"))
+                .ReturnsAsync(new RestResponse()
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    IsSuccessStatusCode = true,
+                    Content = @"
+                    {
+                        ""kind"": ""Listing"",
+                        ""data"": {
+                            ""children"": [
+                            ]
+                        }
+                    }"
+                });
+
+            var subredditStatisticsService = new SubredditStatisticsService(
+                mockRedditApi.Object,
+                mockRepository.Create<ISubredditStatisticsRepository>().Object,
+                25
+            );
+
+            // Act
+            var responseException = Assert.ThrowsAsync<Exception>(async () =>
+                await subredditStatisticsService.MonitorSubreddit(subreddit, maxIterations: 1)
+            );
+            
+
+            // Assert
+            mockRepository.VerifyAll();
+
+            Assert.That(responseException?.Message, Is.EqualTo($"First post not found for subreddit '{subreddit}'"));
+        }
     }
 }
