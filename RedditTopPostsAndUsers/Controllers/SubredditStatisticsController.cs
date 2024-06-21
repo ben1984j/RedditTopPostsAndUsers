@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using RedditTopPostsAndUsers.Models;
 using RedditTopPostsAndUsers.Services;
 
 namespace RedditTopPostsAndUsers.Controllers
@@ -7,15 +8,12 @@ namespace RedditTopPostsAndUsers.Controllers
     [Route("api/[controller]")]
     public class SubredditStatisticsController : ControllerBase
     {
-        // private readonly ILogger<SubredditStatisticsController> _logger;
         private readonly ISubredditStatisticsService _subredditStatisticsService;
 
         public SubredditStatisticsController(
-            // ILogger<SubredditStatisticsController> logger,
             ISubredditStatisticsService subredditStatisticsService
         )
         {
-            // _logger = logger;
             _subredditStatisticsService = subredditStatisticsService;
         }
 
@@ -29,8 +27,12 @@ namespace RedditTopPostsAndUsers.Controllers
             {
                 return NotFound($"Statistics for subreddit {subreddit} not found.  If you wish to monitor this subreddit, please ensure it is specified accordingly within the application settings.");
             }
-
-            return Ok(subredditStatistics); // TODO: return only top N records
+;
+            return Ok(new SubredditStatisticsModel()
+            {
+                Posts = subredditStatistics?.Posts?.OrderByDescending(x => x.Upvotes).Take(10).ToList(),
+                Users = subredditStatistics?.Users?.OrderByDescending(x => x.PostCount).Take(10).ToList()
+            });
         }
     }
 }

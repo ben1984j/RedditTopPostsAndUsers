@@ -18,9 +18,6 @@ namespace RedditTopPostsAndUsers.Repositories
         public void SetSubredditStatistics(string subreddit, SubredditStatisticsModel statistics)
         {
             _statistics[subreddit] = statistics;
-
-            //Console.WriteLine(JsonConvert.SerializeObject(statistics?.Posts?.OrderByDescending(x => x.Upvotes).Take(2), Formatting.Indented));
-            //Console.WriteLine(JsonConvert.SerializeObject(statistics?.Users?.OrderByDescending(x => x.PostCount).Take(2), Formatting.Indented));
         }
     }
 }

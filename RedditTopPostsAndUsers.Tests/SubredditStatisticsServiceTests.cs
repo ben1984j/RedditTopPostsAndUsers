@@ -186,5 +186,7 @@ namespace RedditTopPostsAndUsers.Tests
             // Assert
             mockRepository.VerifyAll();
         }
+
+        // TODO: negative tests, covering what happens when Reddit API returns non-success response, etc.
     }
 }
