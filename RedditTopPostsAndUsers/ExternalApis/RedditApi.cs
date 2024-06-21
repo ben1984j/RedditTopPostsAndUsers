@@ -63,29 +63,23 @@ namespace RedditTopPostsAndUsers.ExternalApis
                     Authenticator = new OAuth2AuthorizationRequestHeaderAuthenticator(_accessToken, "Bearer")
                 };
 
-
                 request.AddQueryParameter("before", before);
                 request.AddQueryParameter("limit", limit);
                 request.AddHeader("User-Agent", _userAgent);
 
                 var response = await _oauthUrlRestClient.ExecuteAsync(request);
 
-                if (response.StatusCode == HttpStatusCode.Unauthorized)
-                {
-                    _accessToken = null; // likely expired; set to null so will be refreshed on next request
-                    return response;
-                }
-
                 decimal.TryParse(response?.GetHeaderValue("x-ratelimit-remaining"), out var rateLimitRemainingRequests);
                 decimal.TryParse(response?.GetHeaderValue("x-ratelimit-reset"), out var rateLimitRemainingSecondsUntilReset);
-
-                //Console.WriteLine(rateLimitRemainingRequests);
-                //Console.WriteLine(rateLimitRemainingSecondsUntilReset);
 
                 if (response?.StatusCode == HttpStatusCode.TooManyRequests)
                 {
                     Console.WriteLine($"Hit request limit; waiting for {rateLimitRemainingSecondsUntilReset} seconds until request limit resets");
                     await Task.Delay((int)(rateLimitRemainingSecondsUntilReset * 1000));
+                }
+                else if (response?.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    _accessToken = null; // token likely expired; set to null so will be refreshed on next request
                 }
                 else if (response?.StatusCode == HttpStatusCode.OK)
                 {
