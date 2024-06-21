@@ -12,16 +12,34 @@ namespace RedditTopPostsAndUsers.ExternalApis
         private const string _oauthUrl = "https://oauth.reddit.com";
         private const string _userAgent = "TopPostsAndUsers v1.0 by u/ben1984j";
 
-        private readonly string _clientId;
-        private readonly string _clientSecret;
+        private readonly IRestClient _baseUrlRestClient;
+        private readonly IRestClient _oauthUrlRestClient;
+
         private readonly Semaphore _apiRequestLock = new Semaphore(1, 1);
 
         private string? _accessToken = null;
 
         public RedditApi(string clientId, string clientSecret)
+            : this(
+                new RestClient(
+                    new RestClientOptions(_baseUrl)
+                    {
+                        Authenticator = new HttpBasicAuthenticator(
+                            clientId,
+                            clientSecret
+                        ),
+                        ThrowOnAnyError = true
+                    }
+                ),
+                new RestClient(_oauthUrl)
+              )
         {
-            _clientId = clientId;
-            _clientSecret = clientSecret;
+        }
+
+        public RedditApi(IRestClient baseUrlRestClient, IRestClient oauthUrlRestClient)
+        {
+            _baseUrlRestClient = baseUrlRestClient;
+            _oauthUrlRestClient = oauthUrlRestClient;
         }
 
         public async Task<RestResponse?> GetNewPosts(string subreddit, string before, string limit)
@@ -37,25 +55,20 @@ namespace RedditTopPostsAndUsers.ExternalApis
                     await SetAccessToken();
                 }
 
-                var restClient = new RestClient(
-                    new RestClientOptions(_oauthUrl)
-                    {
-                        Authenticator = new OAuth2AuthorizationRequestHeaderAuthenticator(_accessToken, "Bearer")
-                    }
-                );
-                // TODO: would be more ideal to reuse the same restClient for all requests to the _oauthUrl,
-                // though the restClient would have to be recreated whenever the access token changes
-
                 var request = new RestRequest(
                     $"/r/{subreddit}/new",
                     Method.Get
-                );
+                )
+                {
+                    Authenticator = new OAuth2AuthorizationRequestHeaderAuthenticator(_accessToken, "Bearer")
+                };
+
 
                 request.AddQueryParameter("before", before);
                 request.AddQueryParameter("limit", limit);
                 request.AddHeader("User-Agent", _userAgent);
 
-                var response = await restClient.ExecuteAsync(request);
+                var response = await _oauthUrlRestClient.ExecuteAsync(request);
 
                 if (response.StatusCode == HttpStatusCode.Unauthorized)
                 {
@@ -91,21 +104,8 @@ namespace RedditTopPostsAndUsers.ExternalApis
             }
         }
 
-
         private async Task SetAccessToken()
         {
-            var restClient = new RestClient(
-                new RestClientOptions(_baseUrl)
-                {
-                    Authenticator = new HttpBasicAuthenticator(
-                        _clientId,
-                        _clientSecret
-                    )
-                }
-            );
-            // This operation is not performed very frequently so it is OK to create a new
-            // rest client each time
-
             var request = new RestRequest(
                 "/api/v1/access_token",
                 Method.Post
@@ -113,13 +113,11 @@ namespace RedditTopPostsAndUsers.ExternalApis
 
             request.AddBody("grant_type=client_credentials", ContentType.FormUrlEncoded);
 
-            var response = await restClient.ExecuteAsync(request);
-
-            var content = JsonConvert.DeserializeObject<dynamic>(response?.Content ?? "{}");
-
+            var response = await _baseUrlRestClient.ExecuteAsync(request);
+            var content = JsonConvert.DeserializeObject<dynamic>(response?.Content ?? "{}"); // could deserialize into a dedicated auth response model, but this is easier since we only need one property
             _accessToken = content?.access_token;
 
-            Console.WriteLine(_accessToken);
+            Console.WriteLine($"Set access token: {_accessToken}");
         }
     }
 }

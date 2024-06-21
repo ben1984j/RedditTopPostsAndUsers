@@ -1,15 +1,18 @@
 using RedditTopPostsAndUsers.ExternalApis;
 using RedditTopPostsAndUsers.Repositories;
 using RedditTopPostsAndUsers.Services;
+using RestSharp;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddSingleton<IRedditApi, RedditApi>(sp => new RedditApi(
-    builder.Configuration["RedditApiClientId"],
-    builder.Configuration["RedditApiClientSecret"]
-));
+builder.Services.AddSingleton<IRedditApi, RedditApi>(sp =>
+    new RedditApi(
+        builder.Configuration["RedditApiClientId"],
+        builder.Configuration["RedditApiClientSecret"]
+    )
+);
 builder.Services.AddSingleton<ISubredditStatisticsRepository, SubredditStatisticsRepository>();
 builder.Services.AddSingleton<ISubredditStatisticsService, SubredditStatisticsService>();
 
