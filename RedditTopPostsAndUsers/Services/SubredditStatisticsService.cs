@@ -10,19 +10,23 @@ namespace RedditTopPostsAndUsers.Services
     {
         private readonly IRedditApi _redditApi;
         private readonly ISubredditStatisticsRepository _subredditStatisticsRepository;
+        private readonly int _redditApiPageSize;
 
-        public SubredditStatisticsService(IRedditApi redditApi, ISubredditStatisticsRepository subredditStatisticsRepository)
+        public SubredditStatisticsService(
+            IRedditApi redditApi,
+            ISubredditStatisticsRepository subredditStatisticsRepository,
+            int redditApiPageSize = 100
+        )
         {
             _redditApi = redditApi;
             _subredditStatisticsRepository = subredditStatisticsRepository;
+            _redditApiPageSize = redditApiPageSize;
         }
 
         public SubredditStatisticsModel? GetSubredditStatistics(string subreddit) => _subredditStatisticsRepository.GetSubredditStatistics(subreddit);
 
         public async Task MonitorSubreddit(string subreddit, int? maxIterations = null)
         {
-            // TODO: test invalid subreddit name.
-
             var firstPostId = await GetFirstPostId(subreddit) ?? throw new Exception("Error retrieving initial post from subreddit.");
             // tODO: handle if null.  can't continue.
 
@@ -37,6 +41,7 @@ namespace RedditTopPostsAndUsers.Services
                 {
                     Console.WriteLine(ex.ToString());
                 }
+
                 i++;
             }
         }
@@ -68,7 +73,7 @@ namespace RedditTopPostsAndUsers.Services
 
             do
             {
-                var response = await _redditApi.GetNewPosts(subreddit, before: before, limit: "100");
+                var response = await _redditApi.GetNewPosts(subreddit, before: before, limit: _redditApiPageSize.ToString());
 
                 if (response?.StatusCode != HttpStatusCode.OK)
                 {

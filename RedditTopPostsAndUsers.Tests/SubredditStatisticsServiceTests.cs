@@ -60,8 +60,7 @@ namespace RedditTopPostsAndUsers.Tests
         {
             // Arrange
             var subreddit = "funny";
-
-            var firstPostId = "t3_1dk2fkz";
+            var redditApiPageSize = 2;
 
             var mockRepository = new MockRepository(MockBehavior.Strict);
 
@@ -80,8 +79,7 @@ namespace RedditTopPostsAndUsers.Tests
                                 {
                                     ""kind"": ""t3"",
                                     ""data"": {
-                                        ""name"": """ + firstPostId + @""",
-                                        ""author"": ""user1"",
+                                        ""name"": ""post0""
                                     }
                                 }
                             ]
@@ -90,7 +88,71 @@ namespace RedditTopPostsAndUsers.Tests
                 });
 
             mockRedditApi
-                .Setup(x => x.GetNewPosts(subreddit, firstPostId, "100"))
+                .Setup(x => x.GetNewPosts(subreddit, "post0", redditApiPageSize.ToString()))
+                .ReturnsAsync(new RestResponse()
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    IsSuccessStatusCode = true,
+                    Content = @"
+                    {
+                        ""kind"": ""Listing"",
+                        ""data"": {
+                            ""children"": [
+                                {
+                                    ""kind"": ""t3"",
+                                    ""data"": {
+                                        ""name"": ""post2"",
+                                        ""author"": ""userB"",
+                                        ""ups"": 37
+                                    }
+                                },
+                                {
+                                    ""kind"": ""t3"",
+                                    ""data"": {
+                                        ""name"": ""post1"",
+                                        ""author"": ""userA"",
+                                        ""ups"": 11
+                                    }
+                                }
+                            ]
+                        }
+                    }"
+                });
+
+            mockRedditApi
+                .Setup(x => x.GetNewPosts(subreddit, "post2", redditApiPageSize.ToString()))
+                .ReturnsAsync(new RestResponse()
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    IsSuccessStatusCode = true,
+                    Content = @"
+                    {
+                        ""kind"": ""Listing"",
+                        ""data"": {
+                            ""children"": [
+                                {
+                                    ""kind"": ""t3"",
+                                    ""data"": {
+                                        ""name"": ""post4"",
+                                        ""author"": ""userB"",
+                                        ""ups"": 10002
+                                    }
+                                },
+                                {
+                                    ""kind"": ""t3"",
+                                    ""data"": {
+                                        ""name"": ""post3"",
+                                        ""author"": ""userC"",
+                                        ""ups"": 4
+                                    }
+                                }
+                            ]
+                        }
+                    }"
+                });
+
+            mockRedditApi
+                .Setup(x => x.GetNewPosts(subreddit, "post4", redditApiPageSize.ToString()))
                 .ReturnsAsync(new RestResponse()
                 {
                     StatusCode = HttpStatusCode.OK,
@@ -107,13 +169,15 @@ namespace RedditTopPostsAndUsers.Tests
 
             var mockSubredditStatisticsRepository = mockRepository.Create<ISubredditStatisticsRepository>();
             mockSubredditStatisticsRepository
-                .Setup(x => x.SetSubredditStatistics(subreddit, It.IsAny<SubredditStatisticsModel>()));
-            // TODO: could match SubredditStatisticsModel more specifically to see if statistics were computed correctly;
-            // however, this would require more extensive sample JSON above
+                .Setup(x => x.SetSubredditStatistics(
+                    subreddit,
+                    It.Is<SubredditStatisticsModel>(y => y.Posts.Count == 4 && y.Users.Count == 3)
+                 ));
 
             var subredditStatisticsService = new SubredditStatisticsService(
                 mockRedditApi.Object,
-                mockSubredditStatisticsRepository.Object
+                mockSubredditStatisticsRepository.Object,
+                redditApiPageSize
             );
 
             // Act
