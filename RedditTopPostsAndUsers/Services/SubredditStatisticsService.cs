@@ -19,16 +19,25 @@ namespace RedditTopPostsAndUsers.Services
 
         public SubredditStatisticsModel? GetSubredditStatistics(string subreddit) => _subredditStatisticsRepository.GetSubredditStatistics(subreddit);
 
-        public async Task MonitorSubreddit(string subreddit)
+        public async Task MonitorSubreddit(string subreddit, int? maxIterations = null)
         {
             // TODO: test invalid subreddit name.
 
             var firstPostId = await GetFirstPostId(subreddit) ?? throw new Exception("Error retrieving initial post from subreddit.");
             // tODO: handle if null.  can't continue.
 
-            while (true)
+            var i = 0;
+            while (maxIterations != null && i < maxIterations)
             {
-                await SetSubredditStatistics(subreddit, firstPostId);
+                try
+                {
+                    await SetSubredditStatistics(subreddit, firstPostId);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.ToString());
+                }
+                i++;
             }
         }
 

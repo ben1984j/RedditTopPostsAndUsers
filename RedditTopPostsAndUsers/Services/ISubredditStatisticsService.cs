@@ -6,6 +6,6 @@ namespace RedditTopPostsAndUsers.Services
     {
         public SubredditStatisticsModel? GetSubredditStatistics(string subreddit);
 
-        public Task MonitorSubreddit(string subreddit);
+        public Task MonitorSubreddit(string subreddit, int? maxIterations = null);
     }
 }
